@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Smart Kade Pro - ස්මාර්ට් කඩේ Pro</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#111111">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{--bg:#f6f6f6;--card:#fff;--text:#111;--muted:#666;--primary:#111;--danger:#c00;--ok:#16a34a;--low:#ffdddd}
+*{box-sizing:border-box}body{margin:0;font-family:'Noto Sans Sinhala',system-ui,sans-serif;background:var(--bg);color:var(--text);padding-bottom:80px}
+header{position:sticky;top:0;z-index:10;background:#111;color:#fff;padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:15px;margin:0}header small{font-size:11px;opacity:.7}
+nav{position:sticky;top:48px;z-index:9;background:#111;display:flex;gap:6px;overflow-x:auto;padding:8px 10px;white-space:nowrap;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:#222;color:#aaa;border:0;border-radius:999px;padding:8px 14px;font-size:12px;white-space:nowrap}
+nav button.active{background:#fff;color:#111;font-weight:700}
+.card{background:var(--card);border-radius:14px;padding:14px;margin:10px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card h2{font-size:14px;margin:0 0 10px}
+label{font-size:12px;color:var(--muted);display:block;margin:8px 0 4px}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font-size:14px;background:#fff}
+button{cursor:pointer}
+button.primary{background:var(--primary);color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:600}
+button.small{padding:6px 10px;font-size:12px;border-radius:8px;border:1px solid #ddd;background:#fff}
+button.ghost{background:#f5f5f5}
+button.danger{background:var(--danger);color:#fff;border:0}
+.flex{display:flex;gap:8px;flex-wrap:wrap}
+.kpi{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px}
+.kpi .box{background:#fff;border-radius:12px;padding:12px}
+.kpi .box b{font-size:18px;display:block}
+.kpi .box span{font-size:11px;color:#666}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:6px 4px;border-bottom:1px solid #eee;text-align:left}
+th{background:#f9f9f9}
+.low{background:var(--low)!important;color:#900}
+.note{font-size:11px;color:#666;background:#f9f9f9;padding:8px;border-radius:8px;margin:6px 0}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:999px;font-size:12px;z-index:99999;display:none}
+</style>
+</head>
+<body>
+
+<div id="lockScreen" style="display:none;position:fixed;inset:0;background:#0f0f0f;z-index:9999;align-items:center;justify-content:center;padding:20px;flex-direction:column">
+  <h2 style="color:#fff;margin-bottom:12px">🔒 කඩේ Lock කර ඇත</h2>
+  <p style="color:#aaa;font-size:13px;margin-bottom:16px">PIN එක දාලා unlock කරන්න</p>
+  <input id="pinInput" type="password" inputmode="numeric" maxlength="6" placeholder="PIN" style="max-width:220px;text-align:center;font-size:22px;letter-spacing:8px;padding:16px;border-radius:14px">
+  <button class="primary" style="max-width:220px;margin-top:12px" onclick="unlockApp()">Unlock කරන්න</button>
+  <p id="pinMsg" style="color:#ff6b6b;margin-top:10px;font-size:13px"></p>
+</div>
+
+<div id="licenseScreen" style="display:none;position:fixed;inset:0;background:#111;z-index:10000;align-items:center;justify-content:center;padding:20px;flex-direction:column">
+  <div style="background:#fff;border-radius:20px;padding:24px;max-width:380px;width:100%;text-align:center">
+    <h2 style="margin:0 0 8px">🔑 License Key අවශ්‍යයි</h2>
+    <p style="font-size:13px;color:#666;line-height:1.6">Trial දවස් 7 ඉවරයි. Pro License එකක් අවශ්‍යයි.</p>
+    <div style="background:#f5f5f5;border-radius:12px;padding:12px;margin:12px 0;text-align:left;font-size:12px">
+      <b>Shop:</b> <span id="licShopName">-</span><br>
+      <b>Trial Start:</b> <span id="licTrialStart">-</span><br>
+      <b>Days Used:</b> <span id="licDays">-</span>
+    </div>
+    <input id="licenseInput" placeholder="SMK-XXXX-2026" style="text-align:center;font-weight:700;letter-spacing:2px;text-transform:uppercase">
+    <button class="primary" style="width:100%;margin-top:10px" onclick="activateLicense()">✅ Activate කරන්න</button>
+    <p id="licMsg" style="font-size:12px;margin-top:8px;color:#c00"></p>
+    <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="small ghost" onclick="generateDemoKey()">🎁 Demo Key හදන්න</button>
+      <button class="small ghost" onclick="alert('Seller WhatsApp: 07X XXX XXXX - Shop නම + Phone එවන්න')">📲 Seller Contact</button>
+    </div>
+    <p style="font-size:10px;color:#aaa;margin-top:12px">Offline වලම Validate වෙනවා. Master: SMK-9999-2026</p>
+  </div>
+</div>
+
+<div id="scannerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:center;justify-content:center;padding:16px;flex-direction:column">
+  <div style="background:#fff;border-radius:16px;overflow:hidden;max-width:420px;width:100%">
+    <div style="padding:12px 16px;background:#111;color:#fff;display:flex;justify-content:space-between;align-items:center"><b>📷 Barcode Scanner</b><button onclick="closeScanner()" style="background:#333;color:#fff;border:0;border-radius:50%;width:28px;height:28px">✕</button></div>
+    <div id="reader" style="width:100%;min-height:260px;background:#000"></div>
+    <div style="padding:12px"><p id="scanResult" style="font-size:13px;color:#333;text-align:center">Camera එක Barcode එකට අල්ලන්න</p>
+    <input id="manualBarcode" placeholder="Barcode අතින් ගහන්න" style="margin-top:8px">
+    <button class="small primary" style="width:100%;margin-top:8px" onclick="useManualBarcode()">භාණ්ඩය ගන්න</button>
+    </div>
+  </div>
+</div>
+
+<header><div><h1 id="shopTitle">ස්මාර්ට් කඩේ Pro</h1><small id="todayText"></small></div><div><span id="trialBadge" style="font-size:10px;background:#fff;color:#111;border-radius:999px;padding:4px 8px"></span></div></header>
+<nav id="nav"></nav>
+<main id="main"></main>
+<div id="toast"></div>
+
+<script>
+const TODAY = new Date();
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function showToast(m){ const t=document.getElementById('toast'); t.innerText=m; t.style.display='block'; setTimeout(()=>t.style.display='none',2000); }
+
+const defaultDB = {
+ settings:{shopName:'සාම්පල් කඩේ', address:'ගම්පහ', phone:'071XXXXXXX', creditDays:7, logo:'', billColor:'#111111', showPowered:true},
+ products:[
+  {id:'SUGAR001', barcode:'SUGAR001', name:'සීනි 1kg', cat:'මුදල', unit:'kg', min:5, wac:180, stock:20},
+  {id:'RICE001', barcode:'RICE001', name:'සම්බා හාල් 1kg', cat:'හාල්', unit:'kg', min:10, wac:210, stock:30},
+  {id:'TEA001', barcode:'TEA001', name:'තේ කොළ 100g', cat:'තේ', unit:'pcs', min:5, wac:120, stock:15},
+  {id:'MILK001', barcode:'MILK001', name:'කිරිපිටි 400g', cat:'කිරි', unit:'pcs', min:3, wac:850, stock:8},
+  {id:'SOYA001', barcode:'SOYA001', name:'සෝයා මීට්', cat:'ආහාර', unit:'pcs', min:10, wac:60, stock:25}
+ ],
+ customers:[{id:'C001', name:'සාමාන්‍ය පාරිභෝගිකයා', phone:''}],
+ suppliers:[{id:'SUP001', name:'සාම්පල් සැපයුම්කරු'}],
+ sales:[], purchases:[], payments:[], returns:[], adjustments:[], expenses:[], bills:[]
+};
+
+let DB = JSON.parse(localStorage.getItem('smart-kade-db')||'null') || structuredClone(defaultDB);
+let CART=[];
+
+function saveData(){ localStorage.setItem('smart-kade-db', JSON.stringify(DB)); }
+function loadModules(){ return ['dashboard','products','sales','bills','purchases','customers','suppliers','payments','returns','adjust','expenses','stock','credit','profit','search','instruct','settings']; }
+
+// ===== License =====
+function simpleHash(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h*31 + str.charCodeAt(i))%9000; } return 1000 + h; }
+function generateKeyForShop(shop){ const y=new Date().getFullYear(); const mid=simpleHash(shop||DB.settings.shopName||'kade'); return `SMK-${mid}-${y}`; }
+function isValidLicense(key){
+  if(!key) return false; key=key.trim().toUpperCase();
+  if(key==='SMK-2026-SUPER' || key==='SMK-9999-2026' || key==='SMK-1111-2026') return true;
+  const m=key.match(/^SMK-(\d{4})-(\d{4})$/); if(!m) return false;
+  const mid=parseInt(m[1]), yr=parseInt(m[2]); if(yr<2025 || yr>2035) return false;
+  const expected=simpleHash(DB.settings.shopName); const alt=simpleHash((DB.settings.shopName||'')+(DB.settings.phone||''));
+  if(Math.abs(mid-expected)<=8 || Math.abs(mid-alt)<=8 || mid===9999) return true;
+  return false;
+}
+function getTrialStart(){ let s=localStorage.getItem('sk-trial-start'); if(!s){ s=new Date().toISOString(); localStorage.setItem('sk-trial-start', s);} return new Date(s); }
+function checkLicense(){
+  const lic=localStorage.getItem('sk-license');
+  const start=getTrialStart(); const days=Math.floor((Date.now()-start.getTime())/86400000);
+  const badge=document.getElementById('trialBadge');
+  if(lic && isValidLicense(lic)){ badge.innerText='✅ Pro Active'; badge.style.background='#16a34a'; badge.style.color='#fff'; return true; }
+  if(days<=7){ badge.innerText=`🎁 Trial ${7-days} දවස් ඉතිරියි`; return true; }
+  document.getElementById('licenseScreen').style.display='flex';
+  document.getElementById('licShopName').innerText=DB.settings.shopName;
+  document.getElementById('licTrialStart').innerText=start.toLocaleDateString('si-LK');
+  document.getElementById('licDays').innerText=days+' දවස්';
+  badge.innerText='🔒 Trial Expired';
+  return false;
+}
+function activateLicense(){
+  const k=document.getElementById('licenseInput').value.trim().toUpperCase();
+  if(isValidLicense(k)){ localStorage.setItem('sk-license', k); showToast('License Active!'); document.getElementById('licenseScreen').style.display='none'; checkLicense(); }
+  else { document.getElementById('licMsg').innerText='❌ Key එක වැරදියි! Shop නම වෙනස් කරලාද? Demo Key හදලා බලන්න.'; }
+}
+function generateDemoKey(){ const k=generateKeyForShop(DB.settings.shopName); document.getElementById('licenseInput').value=k; document.getElementById('licMsg').innerText='Demo Key එක: '+k+' - Activate කරන්න'; }
+
+// ===== PIN =====
+function getPin(){ return localStorage.getItem('sk-pin'); }
+function setPin(){
+ const p=document.getElementById('newPin').value.trim(); const c=document.getElementById('confirmPin').value.trim();
+ if(p.length<4){ alert('PIN අවම 4ක්'); return; } if(p!==c){ alert('PIN සමාන නෑ'); return; }
+ localStorage.setItem('sk-pin', p); showToast('PIN Save විය'); renderMain();
+}
+function removePin(){ if(confirm('PIN ඉවත් කරන්නද?')){ localStorage.removeItem('sk-pin'); showToast('PIN ඉවත් කළා'); renderMain(); } }
+function checkLock(){ const pin=getPin(); if(pin){ document.getElementById('lockScreen').style.display='flex'; } }
+function unlockApp(){ const entered=document.getElementById('pinInput').value.trim(); if(entered===getPin()){ document.getElementById('lockScreen').style.display='none'; } else { document.getElementById('pinMsg').innerText='PIN වැරදියි!'; } }
+
+// ===== Scanner =====
+let html5Qr=null; let scanTarget='product';
+function openScanner(target='product'){
+  scanTarget=target; document.getElementById('scannerModal').style.display='flex';
+  const onSuccess=(decoded)=>{
+    document.getElementById('scanResult').innerText='✅ '+decoded;
+    if(target==='product'){ const el=document.getElementById('p_id'); if(el) el.value=decoded; const b=document.getElementById('p_barcode'); if(b) b.value=decoded; setTimeout(closeScanner,600); }
+    else if(target==='sale'){ const prod=DB.products.find(p=>p.id===decoded||p.barcode===decoded); if(prod){ addToCart(prod.id); showToast(prod.name+' Added'); setTimeout(closeScanner,600); } else { document.getElementById('scanResult').innerText='භාණ්ඩය හම්බුනේ නෑ: '+decoded; } }
+  };
+  try{
+    if(typeof Html5Qrcode!=='undefined'){
+      html5Qr=new Html5Qrcode("reader");
+      html5Qr.start({facingMode:"environment"}, {fps:10, qrbox:250}, onSuccess, ()=>{}).catch(()=>{ document.getElementById('scanResult').innerText='Camera Permission දෙන්න'; });
+    } else { document.getElementById('scanResult').innerText='Scanner Library නැත, Internet ඕන. අතින් ගහන්න'; }
+  }catch(e){ document.getElementById('scanResult').innerText='Error '+e.message; }
+}
+function closeScanner(){ try{ html5Qr && html5Qr.stop(); }catch(e){} document.getElementById('scannerModal').style.display='none'; }
+function useManualBarcode(){ const code=document.getElementById('manualBarcode').value.trim(); if(!code) return; if(scanTarget==='product'){ const e=document.getElementById('p_id'); if(e) e.value=code; const b=document.getElementById('p_barcode'); if(b) b.value=code; } else { const prod=DB.products.find(p=>p.id===code||p.barcode===code); if(prod) addToCart(prod.id); else alert('හම්බුනේ නෑ'); } closeScanner(); }
+
+// ===== Core Logic =====
+function calcBills(){
+  const map={}; DB.sales.forEach(s=>{ if(!map[s.invoiceId]) map[s.invoiceId]={inv:s.invoiceId,date:s.date,customerId:s.customerId,customerName:(DB.customers.find(c=>c.id===s.customerId)||{}).name||'සාමාන්‍ය',total:0,paid:0}; map[s.invoiceId].total+=s.qty*s.unitPrice; });
+  DB.payments.forEach(p=>{ if(map[p.invoiceId]) map[p.invoiceId].paid+=p.amount; });
+  return Object.values(map).map(b=>({...b,balance:b.total-b.paid})).sort((a,b)=>b.date.localeCompare(a.date));
+}
+function calcSalesProfitForRange(from,to){ const sales=DB.sales.filter(s=>s.date>=from && s.date<=to); let netSales=0,cogs=0; sales.forEach(s=>{ const prod=DB.products.find(p=>p.id===s.productId); netSales+=s.qty*s.unitPrice; cogs+=s.qty*(prod?prod.wac:0); }); const expenses=DB.expenses.filter(e=>e.date>=from && e.date<=to).reduce((a,b)=>a+b.amount,0); return {netSales,cogs,grossProfit:netSales-cogs,expenses,netProfit:netSales-cogs-expenses}; }
+function currentStockReport(){ return DB.products.map(p=>({id:p.id,barcode:p.barcode,name:p.name,current:p.stock,min:p.min,wac:p.wac,value:p.stock*p.wac})).sort((a,b)=>a.current-b.current); }
+
+// ===== Navigation =====
+const modules = {
+ dashboard:{label:'මුල් පිටුව'}, products:{label:'භාණ්ඩ'}, sales:{label:'විකුණුම්'}, bills:{label:'බිල්පත්'}, purchases:{label:'මිලදී'}, customers:{label:'ගනුදෙනු'}, suppliers:{label:'සැපයුම්'}, payments:{label:'ගෙවීම්'}, returns:{label:'ආපසු'}, adjust:{label:'Stock Adjust'}, expenses:{label:'වියදම්'}, stock:{label:'තොග'}, credit:{label:'ණය'}, profit:{label:'ලාභ'}, search:{label:'සොයන්න'}, instruct:{label:'උපදෙස්'}, settings:{label:'සැකසුම්'}
+};
+let activeMod='dashboard';
+function renderNav(){
+ const nav=document.getElementById('nav'); nav.innerHTML=Object.keys(modules).map(k=>`<button class="${k===activeMod?'active':''}" onclick="switchMod('${k}')">${modules[k].label}</button>`).join('');
+}
+function switchMod(k){ activeMod=k; renderNav(); renderMain(); }
+function renderMain(){
+ const main=document.getElementById('main'); document.getElementById('todayText').innerText=new Date().toLocaleDateString('si-LK')+' - '+DB.settings.shopName;
+ document.getElementById('shopTitle').innerText=DB.settings.shopName+' Pro';
+ if(activeMod==='dashboard') main.innerHTML=renderDashboard();
+ else if(activeMod==='products') main.innerHTML=renderProducts();
+ else if(activeMod==='sales') main.innerHTML=renderSales();
+ else if(activeMod==='bills') main.innerHTML=renderBills();
+ else if(activeMod==='purchases') main.innerHTML=renderPurchases();
+ else if(activeMod==='customers') main.innerHTML=renderCustomers();
+ else if(activeMod==='suppliers') main.innerHTML=renderSuppliers();
+ else if(activeMod==='payments') main.innerHTML=renderPayments();
+ else if(activeMod==='returns') main.innerHTML=renderReturns();
+ else if(activeMod==='adjust') main.innerHTML=renderAdjust();
+ else if(activeMod==='expenses') main.innerHTML=renderExpenses();
+ else if(activeMod==='stock') main.innerHTML=renderStock();
+ else if(activeMod==='credit') main.innerHTML=renderCredit();
+ else if(activeMod==='profit') main.innerHTML=renderProfit();
+ else if(activeMod==='search') main.innerHTML=renderSearch();
+ else if(activeMod==='instruct') main.innerHTML=renderInstruct();
+ else if(activeMod==='settings') main.innerHTML=renderSettings();
+}
+
+// ===== Modules =====
+function renderDashboard(){
+ const today=todayISO(); const d=calcSalesProfitForRange(today,today); const stockVal=currentStockReport().reduce((s,x)=>s+x.value,0); const low=currentStockReport().filter(x=>x.current<=x.min).length;
+ return `<div class="kpi"><div class="box"><span>අද විකුණුම්</span><b>Rs.${d.netSales.toFixed(0)}</b></div><div class="box"><span>අද ලාභය</span><b>Rs.${d.netProfit.toFixed(0)}</b></div><div class="box"><span>තොග වටිනාකම</span><b>Rs.${stockVal.toFixed(0)}</b></div><div class="box"><span>LOW Stock</span><b style="color:${low?'#c00':'#16a34a'}">${low}</b></div></div>
+ <div class="card"><h2>අද දිනය</h2><input type="date" id="dashDate" value="${today}" onchange="updateDash()"><div id="dashData" style="margin-top:10px"></div></div>
+ <div class="card"><h2>ඉක්මන් ක්‍රියා</h2><div class="flex"><button class="small primary" onclick="switchMod('sales')">🛒 විකුණන්න</button><button class="small" onclick="switchMod('products')">📦 භාණ්ඩ</button><button class="small" onclick="openScanner('sale')">📷 Scan</button><button class="small" onclick="exportJSON()">💾 Backup</button></div></div>`;
+}
+function updateDash(){ const d=document.getElementById('dashDate').value; const r=calcSalesProfitForRange(d,d); document.getElementById('dashData').innerHTML=`විකුණුම්: ${r.netSales} | ලාභ: ${r.netProfit.toFixed(0)} | වියදම්: ${r.expenses}`; }
+
+function renderProducts(){
+ return `<div class="card"><h2>භාණ්ඩ කළමනාකරණය Pro</h2>
+ <div style="display:flex;gap:8px;margin-bottom:8px"><button class="small primary" onclick="openScanner('product')">📷 Barcode Scan කර ID ගන්න</button><span style="font-size:11px;color:#888">Camera එකෙන් Scan</span></div>
+ <label>ID / Barcode *</label><div style="display:flex;gap:6px"><input id="p_id" placeholder="RICE001" style="flex:1"><button class="small" onclick="openScanner('product')">📷</button></div>
+ <label>Barcode (EAN13)</label><input id="p_barcode" placeholder="Auto ID එකම">
+ <label>නම</label><input id="p_name" placeholder="සම්බා හාල්">
+ <label>කාණ්ඩය</label><input id="p_cat" placeholder="හාල්">
+ <label>ඒකකය</label><select id="p_unit"><option>kg</option><option>pcs</option><option>g</option><option>l</option></select>
+ <label>අවම තොගය</label><input id="p_min" type="number" value="5">
+ <label>මිල (WAC)</label><input id="p_wac" type="number">
+ <label>තොගය</label><input id="p_stock" type="number">
+ <button class="primary" style="margin-top:8px" onclick="addProduct()">භාණ්ඩය Save කරන්න</button></div>
+ <div class="card"><table><tr><th>ID</th><th>Barcode</th><th>නම</th><th>තොග</th><th>WAC</th><th></th></tr>${DB.products.map(p=>`<tr class="${p.stock<=p.min?'low':''}"><td>${p.id}</td><td>${p.barcode||''}</td><td>${p.name}</td><td>${p.stock}</td><td>${p.wac}</td><td><button class="small danger" onclick="delProduct('${p.id}')">X</button></td></tr>`).join('')}</table></div>`;
+}
+function addProduct(){
+ const id=document.getElementById('p_id').value.trim().toUpperCase(); const barcode=document.getElementById('p_barcode').value.trim()||id;
+ const name=document.getElementById('p_name').value.trim(); const cat=document.getElementById('p_cat').value.trim();
+ const unit=document.getElementById('p_unit').value; const min=parseFloat(document.getElementById('p_min').value)||0;
+ const wac=parseFloat(document.getElementById('p_wac').value)||0; const stock=parseFloat(document.getElementById('p_stock').value)||0;
+ if(!id||!name){ alert('ID සහ නම අනිවාර්යයි'); return; }
+ const existing=DB.products.find(p=>p.id===id); if(existing){ existing.barcode=barcode; existing.name=name; existing.cat=cat; existing.unit=unit; existing.min=min; existing.wac=wac; existing.stock=stock; } else { DB.products.push({id,barcode,name,cat,unit,min,wac,stock}); }
+ saveData(); showToast('Save විය'); renderMain();
+}
+function delProduct(id){ if(confirm('මකන්නද?')){ DB.products=DB.products.filter(p=>p.id!==id); saveData(); renderMain(); } }
+
+function renderSales(){
+ return `<div class="card"><h2>විකුණුම් (POS) Pro</h2>
+ <div style="display:flex;gap:8px;margin-bottom:8px"><button class="small primary" onclick="openScanner('sale')">📷 Barcode Scan කර විකුණන්න</button><input id="saleDate" type="date" value="${todayISO()}" style="max-width:160px"></div>
+ <label>භාණ්ඩය</label><div style="display:flex;gap:6px"><select id="saleProd" style="flex:1">${DB.products.map(p=>`<option value="${p.id}">${p.name} - Stock ${p.stock}</option>`).join('')}</select><button class="small" onclick="addToCart(document.getElementById('saleProd').value)">Add</button></div>
+ <div id="cartBox" style="margin-top:10px"></div>
+ <label>පාරිභෝගිකයා</label><select id="saleCust">${DB.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select>
+ <label>ගෙවූ මුදල</label><input id="salePaid" type="number" placeholder="0">
+ <button class="primary" style="margin-top:8px;width:100%" onclick="checkout()">💰 විකුණන්න / Bill හදන්න</button></div>`;
+}
+function addToCart(pid){ const p=DB.products.find(x=>x.id===pid||x.barcode===pid); if(!p){ alert('භාණ්ඩය නෑ'); return; } if(p.stock<=0){ alert('තොග නෑ'); return; } const ex=CART.find(c=>c.id===pid); if(ex) ex.qty++; else CART.push({id:p.id,name:p.name,price:p.wac*1.2,qty:1}); renderCart(); }
+function renderCart(){ const box=document.getElementById('cartBox'); if(!box) return; if(CART.length===0){ box.innerHTML='<div class="note">Cart හිස්</div>'; return; } let total=0; box.innerHTML=`<table>${CART.map((c,i)=>{ total+=c.price*c.qty; return `<tr><td>${c.name}</td><td>${c.qty}</td><td>${(c.price*c.qty).toFixed(0)}</td><td><button class="small danger" onclick="CART.splice(${i},1);renderCart()">X</button></td></tr>`; }).join('')}<tr><th colspan="2">මුළු</th><th>${total.toFixed(0)}</th><th></th></tr></table>`; }
+function checkout(){
+ if(CART.length===0){ alert('Cart හිස්'); return; } const date=document.getElementById('saleDate').value||todayISO(); const cust=document.getElementById('saleCust').value; const paid=parseFloat(document.getElementById('salePaid').value)||0;
+ const inv='INV'+Date.now().toString().slice(-6); let total=0; CART.forEach(c=>{ total+=c.price*c.qty; DB.sales.push({invoiceId:inv,productId:c.id,qty:c.qty,unitPrice:c.price,date}); const prod=DB.products.find(p=>p.id===c.id); if(prod) prod.stock-=c.qty; });
+ if(paid>0) DB.payments.push({invoiceId:inv,amount:paid,date}); DB.bills.push({inv,date,customerId:cust,total,paid}); saveData(); CART=[]; showToast('විකුණුම OK - '+inv); if(confirm('Thermal Bill Print කරන්නද?')) printThermal(inv); renderMain();
+}
+
+function renderBills(){
+ const bills=calcBills(); return `<div class="card"><h2>බිල්පත් සාරාංශය</h2><div class="flex"><button class="small" onclick="exportPDF('bill')">📄 PDF</button></div><table><tr><th>දිනය</th><th>Inv</th><th>Customer</th><th>මුළු</th><th>ගෙවූ</th><th>ඉතිරි</th><th>Action</th></tr>${bills.map(b=>`<tr><td>${b.date}</td><td>${b.inv}</td><td>${b.customerName}</td><td>${b.total.toFixed(0)}</td><td>${b.paid.toFixed(0)}</td><td>${b.balance.toFixed(0)}</td><td><button class="small" onclick="printThermal('${b.inv}')">🧾 80mm</button></td></tr>`).join('')}</table></div>`;
+}
+function renderPurchases(){ return `<div class="card"><h2>මිලදී ගැනීම් (WAC)</h2><label>දිනය</label><input id="purDate" type="date" value="${todayISO()}"><label>භාණ්ඩය</label><select id="purProd">${DB.products.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select><label>Qty</label><input id="purQty" type="number"><label>මිලදී මිල</label><input id="purPrice" type="number"><button class="primary" style="margin-top:8px" onclick="addPurchase()">Save</button></div><div class="card"><table><tr><th>දිනය</th><th>භාණ්ඩය</th><th>Qty</th><th>මිල</th></tr>${DB.purchases.map(p=>`<tr><td>${p.date}</td><td>${p.productId}</td><td>${p.qty}</td><td>${p.price}</td></tr>`).join('')}</table></div>`; }
+function addPurchase(){ const date=document.getElementById('purDate').value||todayISO(); const pid=document.getElementById('purProd').value; const qty=parseFloat(document.getElementById('purQty').value)||0; const price=parseFloat(document.getElementById('purPrice').value)||0; if(qty<=0) return; DB.purchases.push({date,productId:pid,qty,price}); const prod=DB.products.find(p=>p.id===pid); if(prod){ const totalStock=prod.stock+qty; prod.wac = (prod.stock*prod.wac + qty*price)/totalStock; prod.stock=totalStock; } saveData(); showToast('Purchase OK'); renderMain(); }
+
+function renderCustomers(){ return `<div class="card"><h2>පාරිභෝගිකයෝ</h2><label>නම</label><input id="c_name"><label>Phone</label><input id="c_phone"><button class="primary" style="margin-top:8px" onclick="addCustomer()">Add</button></div><div class="card"><table>${DB.customers.map(c=>`<tr><td>${c.name}</td><td>${c.phone}</td></tr>`).join('')}</table></div>`; }
+function addCustomer(){ const name=document.getElementById('c_name').value.trim(); const phone=document.getElementById('c_phone').value.trim(); if(!name) return; DB.customers.push({id:'C'+Date.now(),name,phone}); saveData(); renderMain(); }
+
+function renderSuppliers(){ return `<div class="card"><h2>සැපයුම්කරුවෝ</h2><label>නම</label><input id="s_name"><button class="primary" style="margin-top:8px" onclick="addSupplier()">Add</button></div><div class="card"><table>${DB.suppliers.map(s=>`<tr><td>${s.name}</td></tr>`).join('')}</table></div>`; }
+function addSupplier(){ const name=document.getElementById('s_name').value.trim(); if(!name) return; DB.suppliers.push({id:'SUP'+Date.now(),name}); saveData(); renderMain(); }
+
+function renderPayments(){ return `<div class="card"><h2>ගෙවීම්</h2><label>Invoice</label><select id="payInv">${calcBills().map(b=>`<option value="${b.inv}">${b.inv} - ${b.balance.toFixed(0)}</option>`).join('')}</select><label>මුදල</label><input id="payAmt" type="number"><label>දිනය</label><input id="payDate" type="date" value="${todayISO()}"><button class="primary" style="margin-top:8px" onclick="addPayment()">Pay</button></div><div class="card"><table>${DB.payments.map(p=>`<tr><td>${p.date}</td><td>${p.invoiceId}</td><td>${p.amount}</td></tr>`).join('')}</table></div>`; }
+function addPayment(){ const inv=document.getElementById('payInv').value; const amt=parseFloat(document.getElementById('payAmt').value)||0; const date=document.getElementById('payDate').value||todayISO(); if(!inv||amt<=0) return; DB.payments.push({invoiceId:inv,amount:amt,date}); saveData(); showToast('Payment OK'); renderMain(); }
+
+function renderReturns(){ return `<div class="card"><h2>ආපසු භාරදීම</h2><label>Invoice</label><input id="retInv"><label>භාණ්ඩය</label><select id="retProd">${DB.products.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select><label>Qty</label><input id="retQty" type="number"><button class="primary" style="margin-top:8px" onclick="addReturn()">Return</button></div>`; }
+function addReturn(){ const inv=document.getElementById('retInv').value; const pid=document.getElementById('retProd').value; const qty=parseFloat(document.getElementById('retQty').value)||0; DB.returns.push({invoiceId:inv,productId:pid,qty,date:todayISO()}); const prod=DB.products.find(p=>p.id===pid); if(prod) prod.stock+=qty; saveData(); showToast('Return OK'); renderMain(); }
+
+function renderAdjust(){ return `<div class="card"><h2>Stock Adjust</h2><label>භාණ්ඩය</label><select id="adjProd">${DB.products.map(p=>`<option value="${p.id}">${p.name} Stock ${p.stock}</option>`).join('')}</select><label>නව Stock</label><input id="adjQty" type="number"><label>හේතුව</label><input id="adjReason"><button class="primary" style="margin-top:8px" onclick="addAdjust()">Adjust</button></div>`; }
+function addAdjust(){ const pid=document.getElementById('adjProd').value; const qty=parseFloat(document.getElementById('adjQty').value)||0; const reason=document.getElementById('adjReason').value; const prod=DB.products.find(p=>p.id===pid); if(!prod) return; DB.adjustments.push({productId:pid,old:prod.stock,new:qty,reason,date:todayISO()}); prod.stock=qty; saveData(); showToast('Adjusted'); renderMain(); }
+
+function renderExpenses(){ return `<div class="card"><h2>වියදම්</h2><label>දිනය</label><input id="expDate" type="date" value="${todayISO()}"><label>විස්තර</label><input id="expDesc"><label>මුදල</label><input id="expAmt" type="number"><button class="primary" style="margin-top:8px" onclick="addExpense()">Add Expense</button></div><div class="card"><table><tr><th>දිනය</th><th>විස්තර</th><th>මුදල</th></tr>${DB.expenses.map(e=>`<tr><td>${e.date}</td><td>${e.desc}</td><td>${e.amount}</td></tr>`).join('')}</table></div>`; }
+function addExpense(){ const date=document.getElementById('expDate').value||todayISO(); const desc=document.getElementById('expDesc').value; const amount=parseFloat(document.getElementById('expAmt').value)||0; DB.expenses.push({date,desc,amount}); saveData(); renderMain(); }
+
+function renderStock(){ const rep=currentStockReport(); return `<div class="card"><h2>තොග වාර්තාව Pro</h2><div class="flex"><button class="small" onclick="exportPDF('stock')">📄 PDF</button></div><table><tr><th>ID</th><th>Barcode</th><th>නම</th><th>Stock</th><th>WAC</th><th>Value</th></tr>${rep.map(r=>`<tr class="${r.current<=DB.products.find(p=>p.id===r.id).min?'low':''}"><td>${r.id}</td><td>${r.barcode}</td><td>${r.name}</td><td>${r.current}</td><td>${r.wac.toFixed(0)}</td><td>${r.value.toFixed(0)}</td></tr>`).join('')}</table></div>`; }
+
+function renderCredit(){ const bills=calcBills().filter(b=>b.balance>0); return `<div class="card"><h2>ණය කළමනාකරණය</h2><div class="flex"><button class="small" onclick="exportPDF('credit')">📄 PDF</button></div><table><tr><th>Inv</th><th>Customer</th><th>Balance</th><th>Date</th></tr>${bills.map(b=>`<tr><td>${b.inv}</td><td>${b.customerName}</td><td>${b.balance.toFixed(0)}</td><td>${b.date}</td></tr>`).join('')}</table></div>`; }
+
+function renderProfit(){ const from=todayISO().slice(0,7)+'-01'; const to=todayISO(); return `<div class="card"><h2>ලාභ අලාභ Pro</h2><label>From</label><input id="profitFrom" type="date" value="${from}"><label>To</label><input id="profitTo" type="date" value="${to}"><button class="small primary" style="margin-top:8px" onclick="updateProfit()">Calculate</button><div id="profitBox" style="margin-top:10px"></div></div>`; }
+function updateProfit(){ const f=document.getElementById('profitFrom').value; const t=document.getElementById('profitTo').value; const d=calcSalesProfitForRange(f,t); document.getElementById('profitBox').innerHTML=`<div class="kpi"><div class="box"><span>Net Sales</span><b>${d.netSales.toFixed(0)}</b></div><div class="box"><span>COGS</span><b>${d.cogs.toFixed(0)}</b></div><div class="box"><span>Gross Profit</span><b>${d.grossProfit.toFixed(0)}</b></div><div class="box"><span>Expenses</span><b>${d.expenses.toFixed(0)}</b></div><div class="box" style="grid-column:span 2;background:#111;color:#fff"><span>Net Profit</span><b>Rs.${d.netProfit.toFixed(0)}</b></div></div>`; }
+
+function renderSearch(){ return `<div class="card"><h2>Quick Search</h2><input id="q" placeholder="භාණ්ඩය, බිල, Customer සොයන්න" oninput="doSearch(this.value)"><div id="qRes" style="margin-top:10px"></div></div>`; }
+function doSearch(q){ q=q.toLowerCase(); if(!q){ document.getElementById('qRes').innerHTML=''; return; } const prod=DB.products.filter(p=>p.name.toLowerCase().includes(q)||p.id.toLowerCase().includes(q)||(p.barcode||'').toLowerCase().includes(q)); const bills=calcBills().filter(b=>b.inv.toLowerCase().includes(q)||b.customerName.toLowerCase().includes(q)); document.getElementById('qRes').innerHTML=`<b>Products</b><br>${prod.map(p=>`${p.id} - ${p.name} Stock ${p.stock}`).join('<br>')}<br><br><b>Bills</b><br>${bills.map(b=>`${b.inv} - ${b.customerName} - ${b.balance}`).join('<br>')}`; }
+
+function renderInstruct(){ return `<div class="card"><h2>උපදෙස්</h2><p style="font-size:13px;line-height:1.8">1. භාණ්ඩ එකතු කරන්න - Barcode Scan කරන්න<br>2. විකුණුම් - Cart එකට දාලා Bill හදන්න<br>3. Thermal Print - බිල්පත් වල 80mm Button<br>4. Backup - Settings > Backup<br>5. License - Shop නම අනුව Key හදන්න - Master: SMK-9999-2026<br>6. White Label - Logo, Color වෙනස් කරන්න<br>7. Drive Backup - Share API එකෙන් Drive එකට</p></div>`; }
+
+function renderSettings(){
+ const trialStart=getTrialStart(); const days=Math.floor((Date.now()-trialStart.getTime())/86400000); const lic=localStorage.getItem('sk-license')||'නෑ (Trial)';
+ return `<div class="card" style="border:2px solid #000"><h2>🔑 Pro License</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+    <div>License: <b>${lic}</b></div><div>Trial: ${days}/7</div>
+    <div>Hash: ${simpleHash(DB.settings.shopName)}</div><div>Gen Key: ${generateKeyForShop(DB.settings.shopName)}</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+    <input id="licenseInput2" placeholder="SMK-XXXX-YYYY" value="${lic.startsWith('SMK')?lic:''}" style="text-transform:uppercase">
+    <button class="small primary" onclick="document.getElementById('licenseInput').value=document.getElementById('licenseInput2').value; activateLicense()">Activate</button>
+  </div>
+  <div class="note">Master: SMK-9999-2026 | Super: SMK-2026-SUPER</div>
+ </div>
+ <div class="card"><h2>🎨 White Label / Brand</h2>
+  <label>ව්‍යාපාරයේ නම</label><input id="set_shop" value="${DB.settings.shopName}">
+  <label>ලිපිනය</label><input id="set_addr" value="${DB.settings.address}">
+  <label>දුරකථන</label><input id="set_phone" value="${DB.settings.phone}">
+  <label>ණය දින</label><input id="set_credit" type="number" value="${DB.settings.creditDays}">
+  <label>Shop Logo</label><input id="shopLogoFile" type="file" accept="image/*">
+  ${DB.settings.logo? `<img src="${DB.settings.logo}" style="max-width:100px;max-height:60px;border:1px solid #ddd;border-radius:8px;margin-top:6px">`:''}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+    <div><label>Bill Color</label><input id="billColor" type="color" value="${DB.settings.billColor||'#111111'}"></div>
+    <div><label style="display:flex;gap:6px;margin-top:28px"><input id="showPowered" type="checkbox" ${DB.settings.showPowered!==false?'checked':''}> Powered by</label></div>
+  </div>
+  <button class="primary" style="margin-top:10px" onclick="saveWhiteLabel()">Save Brand + Settings</button>
+ </div>
+ <div class="card" style="border:2px solid #111"><h2>🔒 ආරක්ෂාව</h2>
+  <label>PIN Lock</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input id="newPin" type="password" maxlength="6" placeholder="අලුත් PIN"><input id="confirmPin" type="password" maxlength="6" placeholder="නැවත PIN"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><button class="small primary" onclick="setPin()">PIN Save</button><button class="small danger" onclick="removePin()">PIN Remove</button></div>
+  <div style="margin-top:8px;font-size:12px;color:${localStorage.getItem('sk-pin')?'#16a34a':'#888'}">${localStorage.getItem('sk-pin')?'✅ PIN Active':'⚠️ PIN නැත'}</div>
+  <hr><h3>Backup Info</h3><div style="font-size:12px">JSON: <b id="lastBackupText">${localStorage.getItem('sk-last-backup')||'නෑ'}</b><br>Drive: <b id="driveLast">${localStorage.getItem('sk-last-drive-backup')||'නෑ'}</b></div>
+ </div>
+ <div class="card"><h2>💾 Backup / PDF / Drive</h2>
+  <div class="flex"><button class="small primary" onclick="exportJSON()">📤 JSON Backup</button><button class="small ghost" onclick="document.getElementById('importFile').click()">📥 Restore</button><input type="file" id="importFile" style="display:none" onchange="importJSON(event)"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><input id="encPass" type="password" placeholder="Password"><button class="small primary" onclick="exportEncrypted()">🔐 Encrypted</button></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><input id="decPass" type="password" placeholder="Password"><input type="file" id="importEncFile" onchange="importEncrypted(event)"></div>
+  <div style="margin-top:12px" class="flex"><button class="small primary" onclick="backupToDrive()">☁️ Drive Backup (Share)</button><button class="small ghost" onclick="exportPDF('bill')">📄 Bills PDF</button><button class="small ghost" onclick="exportPDF('stock')">📄 Stock PDF</button><button class="small ghost" onclick="exportPDF('credit')">📄 Credit PDF</button></div>
+  <div class="note">Drive Backup - Phone එකේ Share වලින් Drive තෝරන්න. Internet ඕන.</div>
+  <hr><button class="small danger" onclick="clearAll()">🗑️ Data මකන්න</button>
+ </div>`;
+}
+
+// ===== Backup / PDF / Drive =====
+function exportJSON(){ const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='smart-kade-backup-'+todayISO()+'.json'; a.click(); localStorage.setItem('sk-last-backup', new Date().toLocaleString('si-LK')); showToast('Backup OK'); }
+function importJSON(e){ const file=e.target.files[0]; if(!file) return; const r=new FileReader(); r.onload=()=>{ try{ DB=JSON.parse(r.result); saveData(); showToast('Restore OK'); location.reload(); }catch(err){ alert('File වැරදියි'); } }; r.readAsText(file); }
+function xorCrypt(str,pass){ let out=''; for(let i=0;i<str.length;i++){ out+=String.fromCharCode(str.charCodeAt(i)^pass.charCodeAt(i%pass.length)); } return out; }
+function exportEncrypted(){ const pass=document.getElementById('encPass').value.trim(); if(!pass){ alert('Password දාන්න'); return; } const json=JSON.stringify(DB); const enc=btoa(unescape(encodeURIComponent(xorCrypt(json,pass)))); const blob=new Blob([enc],{type:'text/plain'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='smart-kade-ENCRYPTED-'+todayISO()+'.skb'; a.click(); localStorage.setItem('sk-last-backup', new Date().toLocaleString('si-LK')+' (Encrypt)'); showToast('Encrypted OK'); }
+function importEncrypted(e){ const file=e.target.files[0]; const pass=document.getElementById('decPass').value.trim()||prompt('Password'); if(!file||!pass) return; const r=new FileReader(); r.onload=()=>{ try{ const dec=decodeURIComponent(escape(atob(r.result.trim()))); const json=xorCrypt(dec,pass); DB=JSON.parse(json); saveData(); showToast('Restore OK'); location.reload(); }catch(err){ alert('Password වැරදියි'); } }; r.readAsText(file); }
+function exportPDF(type){
+ const shop=DB.settings.shopName; const dateStr=todayISO()+' - '+new Date().toLocaleString('si-LK'); let title='', body='';
+ if(type==='bill'){ const bills=calcBills(); title='බිල්පත්'; body=`<table border=1 cellpadding=6 cellspacing=0 style="width:100%;border-collapse:collapse;font-size:12px"><tr><th>දිනය</th><th>Inv</th><th>Customer</th><th>මුළු</th><th>ඉතිරි</th></tr>${bills.map(b=>`<tr><td>${b.date}</td><td>${b.inv}</td><td>${b.customerName}</td><td>${b.total}</td><td>${b.balance}</td></tr>`).join('')}</table>`; }
+ else if(type==='stock'){ const rep=currentStockReport(); title='තොග'; body=`<table border=1 cellpadding=6 cellspacing=0 style="width:100%;border-collapse:collapse;font-size:12px"><tr><th>ID</th><th>Barcode</th><th>නම</th><th>Stock</th><th>Value</th></tr>${rep.map(r=>`<tr><td>${r.id}</td><td>${r.barcode}</td><td>${r.name}</td><td>${r.current}</td><td>${r.value.toFixed(0)}</td></tr>`).join('')}</table>`; }
+ else { title='වාර්තාව'; body=`<p>Stock Value: ${currentStockReport().reduce((s,x)=>s+x.value,0).toFixed(0)}</p>`; }
+ const win=window.open('','_blank'); win.document.write(`<html><head><title>${title}</title><style>body{font-family:system-ui;padding:20px}</style></head><body><h2>${shop} - ${title}</h2><p>${dateStr}</p><hr>${body}<hr><p style="font-size:11px">Smart Kade Pro</p><button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:0;border-radius:8px">Print / Save as PDF</button></body></html>`); win.document.close();
+}
+function backupToDrive(){
+ const json=JSON.stringify(DB); const blob=new Blob([json],{type:'application/json'}); const fileName='smart-kade-drive-'+todayISO()+'.json';
+ if(navigator.canShare && navigator.canShare({files:[new File([blob], fileName, {type:'application/json'})]})){ const file=new File([blob], fileName, {type:'application/json'}); navigator.share({files:[file], title:'Smart Kade Backup'}).then(()=>{ localStorage.setItem('sk-last-drive-backup', new Date().toLocaleString('si-LK')); showToast('Drive Share OK'); }).catch(()=>fallbackDriveDownload(blob,fileName)); }
+ else fallbackDriveDownload(blob,fileName);
+}
+function fallbackDriveDownload(blob,name){ const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); localStorage.setItem('sk-last-drive-backup', new Date().toLocaleString('si-LK')); showToast('Download - Drive එකට Upload කරන්න'); }
+function clearAll(){ if(confirm('සියලු Data මකන්නද?')){ localStorage.clear(); location.reload(); } }
+function saveSettings(){ DB.settings.shopName=document.getElementById('set_shop').value; DB.settings.address=document.getElementById('set_addr').value; DB.settings.phone=document.getElementById('set_phone').value; DB.settings.creditDays=parseInt(document.getElementById('set_credit').value)||7; saveData(); showToast('Settings Save'); renderMain(); }
+function saveWhiteLabel(){
+ const logoFile=document.getElementById('shopLogoFile');
+ const saveRest=()=>{ DB.settings.billColor=document.getElementById('billColor').value; DB.settings.showPowered=document.getElementById('showPowered').checked; saveSettings(); };
+ if(logoFile && logoFile.files[0]){ const r=new FileReader(); r.onload=()=>{ DB.settings.logo=r.result; saveRest(); }; r.readAsDataURL(logoFile.files[0]); } else saveRest();
+}
+function printThermal(invId){
+ const bill=calcBills().find(b=>b.inv===invId); if(!bill){ alert('Bill නෑ'); return; }
+ const items=DB.sales.filter(s=>s.invoiceId===invId); const shop=DB.settings.shopName; const logo=DB.settings.logo||''; const color=DB.settings.billColor||'#111';
+ const win=window.open('','_blank','width=320,height=600');
+ win.document.write(`<html><head><title>Bill ${invId}</title><style>body{margin:0;padding:0} .bill{width:80mm;padding:8px;font-family:monospace;font-size:12px;color:#000} .center{text-align:center} .line{border-top:1px dashed #000;margin:6px 0} .flex{display:flex;justify-content:space-between} @media print{ @page{size:80mm auto;margin:0} }</style></head><body><div class="bill">${logo? `<div class="center"><img src="${logo}" style="max-width:60mm;max-height:20mm"></div>`:''}<div class="center"><b style="font-size:14px;color:${color}">${shop}</b><br><span style="font-size:10px">${DB.settings.address}<br>${DB.settings.phone}</span></div><div class="line"></div><div class="flex"><span>Inv: ${invId}</span><span>${bill.date}</span></div><div>${bill.customerName}</div><div class="line"></div>${items.map(it=>{ const p=DB.products.find(x=>x.id===it.productId); return `<div class="flex"><span>${p?p.name:it.productId} x${it.qty}</span><span>${(it.qty*it.unitPrice).toFixed(0)}</span></div>`; }).join('')}<div class="line"></div><div class="flex"><b>මුළු</b><b>Rs.${bill.total.toFixed(0)}</b></div><div class="flex"><span>ගෙවූ</span><span>${bill.paid.toFixed(0)}</span></div><div class="flex"><b>ඉතිරි</b><b>${bill.balance.toFixed(0)}</b></div><div class="line"></div><div class="center" style="font-size:10px">${DB.settings.showPowered!==false? 'Powered by Smart Kade Pro<br>':''}ස්තූතියි!<br>${new Date().toLocaleString('si-LK')}</div></div><script>window.onload=()=>{window.print();}<\/script></body></html>`);
+ win.document.close();
+}
+
+// INIT
+renderNav(); renderMain(); checkLock(); checkLicense(); getTrialStart();
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
